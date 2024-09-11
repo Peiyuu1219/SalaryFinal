@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 from joblib import load
+from sklearn.preprocessing import OneHotEncoder
 
 # Load the trained model
 model = load('RandomForest.joblib')
 
 # Define categories for categorical features
+categorical_columns = ['workclass', 'education', 'marital-status', 'occupation', 'relationship', 'race', 'sex', 'native-country']
 workclass_options = ['Private', 'Self-emp-not-inc', 'Self-emp-inc', 'Federal-gov', 
                      'Local-gov', 'State-gov', 'Without-pay', 'Never-worked']
 education_options = ['Bachelors', 'Some-college', '11th', 'HS-grad', 'Prof-school', 
@@ -31,6 +33,24 @@ native_country_options = ['United-States', 'Cambodia', 'England', 'Puerto-Rico',
                           'Thailand', 'Yugoslavia', 'El-Salvador', 'Trinadad&Tobago', 
                           'Peru', 'Hong', 'Holand-Netherlands']
 
+# Create one-hot encoder object (using same encoder fit on training data)
+encoder = OneHotEncoder(sparse=False, handle_unknown='ignore')
+# Make sure to fit the encoder on your training data before deploying
+
+def prepare_user_input(input_data):
+    # Convert the input data to DataFrame
+    input_df = pd.DataFrame([input_data])
+    
+    # Apply the same one-hot encoding
+    input_encoded = encoder.transform(input_df[categorical_columns])
+    input_encoded_df = pd.DataFrame(input_encoded, columns=encoder.get_feature_names_out(categorical_columns))
+    
+    # Combine with numeric features
+    input_numeric = input_df.drop(columns=categorical_columns)
+    final_input = pd.concat([input_numeric.reset_index(drop=True), input_encoded_df.reset_index(drop=True)], axis=1)
+    
+    return final_input
+
 def main():
     st.title('Salary Prediction App')
     st.write('Enter details to predict if the person earns more than $50K/year.')
@@ -52,31 +72,35 @@ def main():
     native_country = st.selectbox('Native Country', native_country_options)
 
     if st.button('Predict'):
-        # Prepare the input data for prediction
-        input_data = pd.DataFrame({
-            'age': [age],
-            'workclass': [workclass],
-            'fnlwgt': [fnlwgt],
-            'education': [education],
-            'education-num': [education_num],
-            'marital-status': [marital_status],
-            'occupation': [occupation],
-            'relationship': [relationship],
-            'race': [race],
-            'sex': [sex],
-            'capital-gain': [capital_gain],
-            'capital-loss': [capital_loss],
-            'hours-per-week': [hours_per_week],
-            'native-country': [native_country]
-        })
+        # Prepare the input data
+        user_input_data = {
+            'age': age,
+            'workclass': workclass,
+            'fnlwgt': fnlwgt,
+            'education': education,
+            'education-num': education_num,
+            'marital-status': marital_status,
+            'occupation': occupation,
+            'relationship': relationship,
+            'race': race,
+            'sex': sex,
+            'capital-gain': capital_gain,
+            'capital-loss': capital_loss,
+            'hours-per-week': hours_per_week,
+            'native-country': native_country
+        }
         
-        # Check if the model is loaded correctly
+        # Prepare the user input data for prediction
+        final_input_data = prepare_user_input(user_input_data)
+        
+        # Predict using the trained model
         if hasattr(model, 'predict'):
-            # Predict using the trained model
-            prediction = model.predict(input_data)
-            predicted_salary = '>50K' if prediction[0] == 1 else '<=50K'
-            # Display prediction
-            st.success(f'The predicted salary for the provided details is: {predicted_salary}')
+            try:
+                prediction = model.predict(final_input_data)
+                predicted_salary = '>50K' if prediction[0] == 1 else '<=50K'
+                st.success(f'The predicted salary for the provided details is: {predicted_salary}')
+            except Exception as e:
+                st.error(f'Prediction failed: {e}')
         else:
             st.error('Model is not loaded correctly.')
 
