@@ -2,9 +2,14 @@ import streamlit as st
 import pandas as pd
 from joblib import load
 from sklearn.preprocessing import OneHotEncoder
+import sklearn
 
 # Load the trained model
 model = load('RandomForest.joblib')
+
+# Check scikit-learn version
+version = sklearn.__version__
+print(f"scikit-learn version: {version}")
 
 # Define categories for categorical features
 categorical_columns = ['workclass', 'education', 'marital-status', 'occupation', 'relationship', 'race', 'sex', 'native-country']
@@ -33,9 +38,11 @@ native_country_options = ['United-States', 'Cambodia', 'England', 'Puerto-Rico',
                           'Thailand', 'Yugoslavia', 'El-Salvador', 'Trinadad&Tobago', 
                           'Peru', 'Hong', 'Holand-Netherlands']
 
-# Create one-hot encoder object (using same encoder fit on training data)
-encoder = OneHotEncoder(sparse=False, handle_unknown='ignore')
-# Make sure to fit the encoder on your training data before deploying
+# Create one-hot encoder object based on scikit-learn version
+if version >= '0.22':
+    encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+else:
+    encoder = OneHotEncoder(sparse=False, handle_unknown='ignore')
 
 def prepare_user_input(input_data):
     # Convert the input data to DataFrame
