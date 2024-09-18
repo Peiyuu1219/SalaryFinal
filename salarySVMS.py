@@ -4,7 +4,7 @@ from joblib import load
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 # load trained model
-model_file = 'LogisticRegression.joblib'
+model_file = 'SupportVectorMachine.joblib'
 
 try:
     model = load(model_file)
